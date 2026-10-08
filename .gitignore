@@ -9,3 +9,6 @@ _autosave-*
 .history/
 fp-info-cache
 ~*
+
+# Arduino: ton mot de passe WiFi reste sur ton ordi
+secrets.h
