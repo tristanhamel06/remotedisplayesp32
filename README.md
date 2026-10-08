@@ -7,6 +7,7 @@ Un écran 2.8" connecté à internet. Tu envoies une **photo** ou un **texte** �
 - Le dernier message est sauvegardé dans la mémoire flash, donc il revient après une panne de courant.
 - Le WiFi se configure avec un téléphone, sans reprogrammer l'ESP32.
 - Seul le propriétaire du bot peut envoyer des messages. Les autres sont ignorés.
+- Mode nuit : l'écran s'éteint la nuit (23 h à 7 h par défaut), et la luminosité est réglable par Telegram.
 
 ## Comment ça marche
 
@@ -36,7 +37,7 @@ Le schéma complet est dans [`hardware/`](hardware/) (KiCad 10) ou en PDF dans [
 | 5 | DC | GPIO 16 |
 | 6 | SDI (MOSI) | GPIO 23 |
 | 7 | SCK | GPIO 18 |
-| 8 | LED (rétroéclairage) | 3V3 |
+| 8 | LED (rétroéclairage) | GPIO 22 (PWM, pour le mode nuit) |
 | 9 | SDO (MISO) | GPIO 19 |
 | 10 | T_CLK | GPIO 18 (partagé avec SCK) |
 | 11 | T_CS | GPIO 21 |
@@ -84,6 +85,12 @@ C'est prêt! Le WiFi est déjà sauvegardé, pas besoin de le reconfigurer.
 | Un texte | Affiché en gros, centré |
 | `/effacer` | L'écran revient à l'écran d'attente |
 | `/aide` | Le bot explique comment l'utiliser |
+| `/luminosite 50` | Luminosité de jour, de 5 à 100 % |
+| `/nuit 23 7` | Écran éteint de 23 h à 7 h |
+| `/nuit off` / `/nuit on` | Désactive ou réactive le mode nuit |
+| `/nuit` | Affiche les réglages actuels |
+
+Les réglages sont sauvegardés dans la flash, donc ils restent après un redémarrage. Si un message arrive la nuit, il est affiché, mais l'écran reste éteint jusqu'au matin.
 
 Le bot répond « ✅ Affiché! » quand c'est fait.
 

@@ -4,6 +4,9 @@
 
 void displayBegin();
 
+// Luminosite du retroeclairage, de 0 (eteint) a 100 %
+void displaySetBrightness(uint8_t percent);
+
 // Ecran d'info (connexion, configuration WiFi, erreurs...)
 void displayStatus(const char* title, const String& body);
 
