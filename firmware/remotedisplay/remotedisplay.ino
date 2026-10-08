@@ -28,56 +28,78 @@
 #define LAST_IMAGE_FILE "/last.jpg"
 #define LAST_TEXT_FILE  "/last.txt"
 
-// Fuseau horaire du Quebec (heure normale de l'Est, avec l'heure avancee)
-#define TIMEZONE "EST5EDT,M3.2.0,M11.1.0"
+// ---------------------------------------------------------------------------
+// Bouton dodo : un clic eteint l'ecran pendant 5 heures, un autre clic le
+// rallume. Une petite tache FreeRTOS surveille le bouton en parallele, parce
+// que loop() peut rester bloquee jusqu'a 20 s a attendre Telegram.
+// ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Mode nuit : l'ecran s'eteint entre nightStart et nightEnd.
-// Les reglages sont sauvegardes dans la flash et changeables par Telegram.
-// ---------------------------------------------------------------------------
+#define BUTTON_PIN 32                              // bouton entre GPIO 32 et GND
+#define SLEEP_DURATION_MS (5UL * 60 * 60 * 1000)   // 5 heures
+#define DEBOUNCE_MS 50
 
 Preferences prefs;
-bool nightEnabled = true;
-uint8_t nightStart = 23;     // heure ou l'ecran s'eteint
-uint8_t nightEnd = 7;        // heure ou il se rallume
-uint8_t dayBrightness = 100; // luminosite le jour, en %
+volatile uint8_t brightness = 100;  // luminosite normale, en %
+volatile bool sleeping = false;
+volatile unsigned long sleepStart = 0;
 
 void loadSettings() {
   prefs.begin("ecran", false);
-  nightEnabled = prefs.getBool("nightOn", true);
-  nightStart = prefs.getUChar("nightStart", 23);
-  nightEnd = prefs.getUChar("nightEnd", 7);
-  dayBrightness = prefs.getUChar("brightness", 100);
+  brightness = prefs.getUChar("brightness", 100);
 }
 
 void saveSettings() {
-  prefs.putBool("nightOn", nightEnabled);
-  prefs.putUChar("nightStart", nightStart);
-  prefs.putUChar("nightEnd", nightEnd);
-  prefs.putUChar("brightness", dayBrightness);
+  prefs.putUChar("brightness", brightness);
 }
 
-bool isNight() {
-  if (!nightEnabled || nightStart == nightEnd) return false;
-
-  time_t now = time(nullptr);
-  if (now < 1700000000) return false;  // heure pas encore synchronisee
-  struct tm local;
-  localtime_r(&now, &local);
-  int h = local.tm_hour;
-
-  // Ex. 23 h a 7 h : la periode passe minuit
-  if (nightStart > nightEnd) return h >= nightStart || h < nightEnd;
-  return h >= nightStart && h < nightEnd;
+// Minutes avant que l'ecran se rallume (0 s'il est allume)
+unsigned long sleepMinutesLeft() {
+  if (!sleeping) return 0;
+  unsigned long elapsed = millis() - sleepStart;
+  if (elapsed >= SLEEP_DURATION_MS) return 0;
+  return (SLEEP_DURATION_MS - elapsed) / 60000;
 }
 
-void updateBacklight() {
-  displaySetBrightness(isNight() ? 0 : dayBrightness);
+String sleepStatus() {
+  if (!sleeping) return "L'écran est allumé.";
+  unsigned long m = sleepMinutesLeft();
+  return "L'écran est éteint (bouton dodo). Il se rallume dans " +
+         String(m / 60) + " h " + String(m % 60) + " min.";
 }
 
-String nightStatus() {
-  if (!nightEnabled) return "Mode nuit désactivé.";
-  return "Mode nuit : écran éteint de " + String(nightStart) + " h à " + String(nightEnd) + " h.";
+void backlightTask(void*) {
+  bool lastReading = HIGH;
+  bool stableState = HIGH;
+  unsigned long lastChange = 0;
+
+  for (;;) {
+    // Anti-rebond : l'etat doit rester stable 50 ms avant de compter
+    bool reading = digitalRead(BUTTON_PIN);
+    if (reading != lastReading) {
+      lastChange = millis();
+      lastReading = reading;
+    }
+    if (millis() - lastChange > DEBOUNCE_MS && reading != stableState) {
+      stableState = reading;
+      if (stableState == LOW) {  // bouton appuye
+        sleeping = !sleeping;
+        sleepStart = millis();
+        Serial.println(sleeping ? "Bouton : écran éteint pour 5 h" : "Bouton : écran rallumé");
+      }
+    }
+
+    if (sleeping && millis() - sleepStart >= SLEEP_DURATION_MS) {
+      sleeping = false;
+    }
+
+    displaySetBrightness(sleeping ? 0 : brightness);
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+void startBacklightTask() {
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  xTaskCreatePinnedToCore(backlightTask, "backlight", 3072, nullptr, 1, nullptr, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -155,22 +177,19 @@ const char* HELP_TEXT =
   "• Texte : la taille s'ajuste toute seule.\n"
   "• /effacer : vide l'écran\n"
   "• /luminosite 50 : luminosité de 5 à 100 %\n"
-  "• /nuit 23 7 : écran éteint de 23 h à 7 h\n"
-  "• /nuit off : désactive le mode nuit\n"
-  "• /nuit : voir les réglages";
+  "• /etat : savoir si l'écran est allumé\n\n"
+  "Le bouton sur l'écran l'éteint pour 5 h. Un autre clic le rallume.";
 
 // Reponse apres avoir affiche un message
 String shownReply() {
-  if (isNight()) {
-    return "✅ Affiché! L'écran est en mode nuit, ça va être visible à " + String(nightEnd) + " h.";
-  }
+  if (sleeping) return "✅ Affiché! " + sleepStatus();
   return "✅ Affiché!";
 }
 
 void handleBrightnessCommand(const TelegramMessage& msg) {
   int space = msg.text.indexOf(' ');
   if (space == -1) {
-    telegramSendMessage(msg.chatId, "Luminosité : " + String(dayBrightness) + " %\n\nPour changer : /luminosite 50");
+    telegramSendMessage(msg.chatId, "Luminosité : " + String(brightness) + " %\n\nPour changer : /luminosite 50");
     return;
   }
 
@@ -180,43 +199,11 @@ void handleBrightnessCommand(const TelegramMessage& msg) {
     return;
   }
 
-  dayBrightness = value;
+  brightness = value;
   saveSettings();
-  updateBacklight();
-  String reply = "Luminosité réglée à " + String(dayBrightness) + " %.";
-  if (isNight()) reply += " L'écran est en mode nuit pour l'instant.";
+  String reply = "Luminosité réglée à " + String(value) + " %.";
+  if (sleeping) reply += " " + sleepStatus();
   telegramSendMessage(msg.chatId, reply);
-}
-
-void handleNightCommand(const TelegramMessage& msg) {
-  String arg = msg.text.substring(5);  // apres "/nuit"
-  arg.trim();
-
-  if (arg.isEmpty()) {
-    telegramSendMessage(msg.chatId, nightStatus() +
-      "\n\nPour changer les heures : /nuit 23 7\nPour désactiver : /nuit off");
-    return;
-  }
-
-  if (arg == "off") {
-    nightEnabled = false;
-  } else if (arg == "on") {
-    nightEnabled = true;
-  } else {
-    int start, end;
-    if (sscanf(arg.c_str(), "%d %d", &start, &end) != 2 ||
-        start < 0 || start > 23 || end < 0 || end > 23 || start == end) {
-      telegramSendMessage(msg.chatId, "Format : /nuit 23 7 (éteint de 23 h à 7 h)");
-      return;
-    }
-    nightEnabled = true;
-    nightStart = start;
-    nightEnd = end;
-  }
-
-  saveSettings();
-  updateBacklight();
-  telegramSendMessage(msg.chatId, nightStatus());
 }
 
 // Choisit la taille de photo qui va paraitre la plus grosse a l'ecran,
@@ -287,8 +274,8 @@ void handleMessage(const TelegramMessage& msg) {
     telegramSendMessage(msg.chatId, HELP_TEXT);
   } else if (msg.text.startsWith("/lumin")) {
     handleBrightnessCommand(msg);
-  } else if (msg.text.startsWith("/nuit")) {
-    handleNightCommand(msg);
+  } else if (msg.text == "/etat") {
+    telegramSendMessage(msg.chatId, sleepStatus());
   } else if (msg.text == "/effacer") {
     clearSaved();
     displayWaiting();
@@ -322,9 +309,9 @@ void connectWifi() {
   Serial.println("WiFi connecté : " + WiFi.localIP().toString());
 }
 
-// L'heure sert au mode nuit, et a verifier le certificat HTTPS de Telegram
+// L'heure est necessaire pour verifier le certificat HTTPS de Telegram
 void syncClock() {
-  configTzTime(TIMEZONE, "pool.ntp.org", "time.nist.gov");
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   unsigned long start = millis();
   while (time(nullptr) < 1700000000 && millis() - start < 15000) {
     delay(200);
@@ -337,6 +324,7 @@ void setup() {
   Serial.begin(115200);
   loadSettings();
   displayBegin();
+  startBacklightTask();
 
   if (!LittleFS.begin(true)) {
     Serial.println("Erreur LittleFS");
@@ -344,7 +332,6 @@ void setup() {
 
   connectWifi();
   syncClock();
-  updateBacklight();
   telegramBegin(BOT_TOKEN);
 
   if (OWNER_ID == 0) {
@@ -355,8 +342,6 @@ void setup() {
 }
 
 void loop() {
-  updateBacklight();
-
   TelegramMessage msg;
   if (telegramPoll(msg)) {
     handleMessage(msg);
