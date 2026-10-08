@@ -91,7 +91,9 @@ Si l'écran est déménagé ailleurs, il crée tout seul le réseau `Ecran-Confi
 
 ## Boîtier
 
-Le boîtier imprimé en 3D est conçu par **[@NachiS](https://www.printables.com/@NachiS)** sur Printables. Merci à lui! Tout le crédit pour le design lui revient.
+Le boîtier imprimé en 3D est le modèle **[Display for ESP32 with ILI9341](https://www.printables.com/model/1205379-display-for-esp32-with-ili9341)**, conçu par **[@NachiS](https://www.printables.com/@NachiS)** sur Printables. Merci à lui! Tout le crédit pour le design lui revient.
+
+Les fichiers du boîtier sont sous licence [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (attribution, pas d'utilisation commerciale, partage dans les mêmes conditions). Ils sont inclus ici sans modification. Voir [`hardware/boitier/LICENSE.md`](hardware/boitier/LICENSE.md).
 
 Les fichiers sont dans [`hardware/boitier/`](hardware/boitier/) :
 
