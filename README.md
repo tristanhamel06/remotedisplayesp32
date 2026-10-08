@@ -1,6 +1,20 @@
-# Remote Text Display (ESP32)
+# Remote Display (ESP32 + Telegram)
 
-Un écran TFT 2.8" contrôlé à distance. L'ESP32 héberge une page web : tu l'ouvres sur ton téléphone, tu écris un texte, et il s'affiche sur l'écran.
+Un écran 2.8" connecté à internet. Tu envoies une **photo** ou un **texte** à un bot Telegram, de n'importe où, et ça s'affiche sur l'écran.
+
+- Les photos sont réduites et centrées automatiquement. La légende s'affiche en bas.
+- La taille du texte s'ajuste toute seule. Les accents et les emojis cœur sont supportés.
+- Le dernier message est sauvegardé dans la mémoire flash, donc il revient après une panne de courant.
+- Le WiFi se configure avec un téléphone, sans reprogrammer l'ESP32.
+- Seul le propriétaire du bot peut envoyer des messages. Les autres sont ignorés.
+
+## Comment ça marche
+
+```
+Téléphone (app Telegram)  ──>  serveurs de Telegram  <──  ESP32 (demande les nouveaux messages)  ──>  écran
+```
+
+L'ESP32 interroge l'API de Telegram en continu (*long polling*). Quand un message arrive, il télécharge la photo en JPEG, la décode et l'affiche. Aucun serveur à héberger : Telegram sert d'intermédiaire.
 
 ## Matériel
 
@@ -30,53 +44,69 @@ Le schéma complet est dans [`hardware/`](hardware/) (KiCad 10) ou en PDF dans [
 | 13 | T_DO | GPIO 19 (partagé avec MISO) |
 | 14 | T_IRQ | GPIO 34 |
 
-L'écran et le tactile partagent le même bus SPI (VSPI de l'ESP32). Chacun a son propre CS.
+## Installation
 
-## Firmware
+### 1. Créer le bot Telegram
+1. Dans Telegram, ouvre une conversation avec **@BotFather**.
+2. Envoie `/newbot`, puis choisis un nom et un nom d'utilisateur (qui finit par `bot`).
+3. BotFather te donne un **token** qui ressemble à `123456789:ABCdef...`. Garde-le secret : quelqu'un qui a ce token peut contrôler ton bot.
 
-Le code est dans [`firmware/remotedisplay/`](firmware/remotedisplay/).
-
-### Librairies (Arduino IDE → Library Manager)
-- **Adafruit ILI9341**
-- **Adafruit GFX Library**
-
-Le core ESP32 d'Espressif doit être installé (Board : *ESP32 Dev Module*).
-
-### Configuration du WiFi
+### 2. Configurer le code
 1. Copie `firmware/remotedisplay/secrets.example.h` en `secrets.h` dans le même dossier.
-2. Mets le nom et le mot de passe de ton WiFi dedans.
+2. Mets ton token dans `BOT_TOKEN`. Laisse `OWNER_ID` à `0` pour l'instant.
 
-`secrets.h` est dans le `.gitignore`, donc ton mot de passe se ramasse pas sur GitHub.
+`secrets.h` est dans le `.gitignore`, donc ton token se ramasse pas sur GitHub.
 
-### Utilisation
-1. Téléverse le sketch sur l'ESP32.
-2. L'adresse IP s'affiche en haut de l'écran (ex. `http://192.168.1.42`).
-3. Ouvre cette adresse sur un téléphone ou un ordi connecté au même WiFi.
-4. Écris ton texte, choisis la taille et la couleur, puis clique **Afficher**.
+### 3. Librairies (Arduino IDE → Library Manager)
+- Adafruit ILI9341
+- Adafruit GFX Library
+- ArduinoJson (v7)
+- TJpg_Decoder
+- WiFiManager (par tzapu)
 
-Si l'ESP32 trouve pas le WiFi après 15 secondes, il crée son propre réseau :
-- Réseau : `RemoteDisplay`
-- Mot de passe : `display123`
-- Adresse : `http://192.168.4.1`
+### 4. Téléverser
+Dans l'Arduino IDE :
+- **Board** : ESP32 Dev Module
+- **Partition Scheme** : *No OTA (2MB APP/2MB SPIFFS)*. Avec le schéma par défaut, le programme prend 94 % de la place, ce qui laisse presque rien pour ajouter des fonctions.
 
-Tu peux aussi envoyer du texte sans la page web, par exemple depuis un terminal :
+### 5. Premier démarrage
+1. **WiFi** : l'écran affiche *Configuration WiFi*. Sur ton téléphone, connecte-toi au WiFi `Ecran-Config`. Une page s'ouvre : choisis ton WiFi et entre le mot de passe. L'ESP32 s'en souvient ensuite.
+2. **Ton ID** : envoie n'importe quel message à ton bot. Il te répond ton ID Telegram.
+3. Mets cet ID dans `OWNER_ID` dans `secrets.h`, puis re-téléverse.
 
-```bash
-curl "http://192.168.1.42/send?text=Bonjour&size=4&color=jaune"
-```
+C'est prêt! Le WiFi est déjà sauvegardé, pas besoin de le reconfigurer.
 
-Couleurs disponibles : `blanc`, `jaune`, `vert`, `cyan`, `rouge`, `magenta`, `orange`. Tailles : 1 à 5.
-Les accents français (é, è, à, ç, etc.) sont supportés.
+## Utilisation
+
+| Tu envoies au bot | Résultat |
+|---|---|
+| Une photo | Affichée sur l'écran (avec la légende, s'il y en a une) |
+| Un texte | Affiché en gros, centré |
+| `/effacer` | L'écran revient à l'écran d'attente |
+| `/aide` | Le bot explique comment l'utiliser |
+
+Le bot répond « ✅ Affiché! » quand c'est fait.
+
+Si l'écran est déménagé ailleurs, il crée tout seul le réseau `Ecran-Config` quand il trouve pas son WiFi. Il suffit de refaire l'étape 1 du premier démarrage.
 
 ## Structure du repo
 
 ```
-hardware/   Projet KiCad (schéma, PCB)
-firmware/   Code Arduino pour l'ESP32
-docs/       Schéma en PDF
+hardware/                 Projet KiCad (schéma, PCB)
+docs/                     Schéma en PDF
+firmware/remotedisplay/
+  remotedisplay.ino       Programme principal (WiFi, gestion des messages, sauvegarde)
+  display.cpp/.h          Dessin sur l'écran (texte, photos)
+  telegram.cpp/.h         Communication avec l'API de Telegram
+  certs.h                 Certificat HTTPS de Telegram
+  secrets.example.h       Modèle pour secrets.h
 ```
 
+## Limites
+- Les photos sont affichées en 320x240 au maximum. Les photos en portrait sont plus petites, parce que l'écran est en paysage. Pour un cadre en portrait, mets `SCREEN_ROTATION` à `0` dans `display.cpp`.
+- Les GIF, les vidéos et les stickers sont pas supportés.
+- Le certificat racine de Telegram (Go Daddy G2) expire en 2037. Si Telegram change de certificat avant, il faudra mettre à jour `certs.h`.
+
 ## Idées pour la suite
-- Utiliser le tactile (librairie XPT2046_Touchscreen) pour effacer l'écran ou changer de page
-- Garder le dernier message en mémoire (Preferences / LittleFS) après un redémarrage
-- Faire le PCB dans KiCad
+- Utiliser le tactile pour revoir les anciens messages
+- Faire le PCB et un boîtier imprimé en 3D
