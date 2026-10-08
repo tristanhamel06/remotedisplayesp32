@@ -89,10 +89,24 @@ Le bot répond « ✅ Affiché! » quand c'est fait.
 
 Si l'écran est déménagé ailleurs, il crée tout seul le réseau `Ecran-Config` quand il trouve pas son WiFi. Il suffit de refaire l'étape 1 du premier démarrage.
 
+## Boîtier
+
+Le boîtier imprimé en 3D est conçu par **[@NachiS](https://www.printables.com/@NachiS)** sur Printables. Merci à lui! Tout le crédit pour le design lui revient.
+
+Les fichiers sont dans [`hardware/boitier/`](hardware/boitier/) :
+
+| Fichier | Pièce |
+|---|---|
+| `display-front.stl` | Devant du boîtier (cadre de l'écran) |
+| `display-back.stl` | Arrière du boîtier |
+| `display-ili9341-pin-block.stl` | Bloc pour les pins de l'écran ILI9341 |
+| `display-light-bleed-blocker.stl` | Pièce qui bloque la lumière du rétroéclairage qui dépasse sur les bords |
+
 ## Structure du repo
 
 ```
 hardware/                 Projet KiCad (schéma, PCB)
+hardware/boitier/         Boîtier imprimé en 3D (design par @NachiS)
 docs/                     Schéma en PDF
 firmware/remotedisplay/
   remotedisplay.ino       Programme principal (WiFi, gestion des messages, sauvegarde)
