@@ -91,34 +91,42 @@ Si l'écran est déménagé ailleurs, il crée tout seul le réseau `Ecran-Confi
 
 ## Boîtier
 
-Le boîtier imprimé en 3D est le modèle **[Display for ESP32 with ILI9341](https://www.printables.com/model/1205379-display-for-esp32-with-ili9341)**, conçu par **[@NachiS](https://www.printables.com/@NachiS)** sur Printables. Merci à lui! Tout le crédit pour le design lui revient.
+Le boîtier imprimé en 3D est basé sur le modèle **[Display for ESP32 with ILI9341](https://www.printables.com/model/1205379-display-for-esp32-with-ili9341)**, conçu par **[@NachiS](https://www.printables.com/@NachiS)** sur Printables. Merci à lui! Tout le crédit pour le design original lui revient.
 
-Les fichiers du boîtier sont sous licence [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (attribution, pas d'utilisation commerciale, partage dans les mêmes conditions). Les fichiers originaux sont inclus sans modification. La version avec le bouton est une modification, partagée sous la même licence. Voir [`hardware/boitier/LICENSE.md`](hardware/boitier/LICENSE.md).
+Le modèle original est fait pour un écran **2.4"**. Ce projet utilise un **2.8" (MSP2807)**, alors le boîtier a été modifié : élargi de 16 mm, avec un devant refait pour le 2.8" et un bouton sur le dessus. Les fichiers sont sous licence [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), comme l'original. Les modifications sont décrites dans [`hardware/boitier/LICENSE.md`](hardware/boitier/LICENSE.md).
 
-Les fichiers sont dans [`hardware/boitier/`](hardware/boitier/) :
+![Boîtier 2.8"](docs/boitier-28.png)
 
-| Fichier | Pièce |
-|---|---|
-| `display-front.stl` | Devant du boîtier (cadre de l'écran) |
-| `display-back.stl` | Arrière du boîtier |
-| `display-ili9341-pin-block.stl` | Bloc pour les pins de l'écran ILI9341 |
-| `display-light-bleed-blocker.stl` | Pièce qui bloque la lumière du rétroéclairage qui dépasse sur les bords |
-| `display-back-bouton.stl` | Arrière du boîtier **avec le bouton** (modifié). Imprime-le à la place de `display-back.stl` |
-| `bouton-piston.stl` | Piston du bouton |
-| `bouton-porte-switch.stl` | Support du switch TL1105 |
+*De haut en bas : la face avant ; juste derrière la face, avec la vitre (bleu foncé) et l'image (bleu pâle) ; coupe de côté avec le circuit (rouge) et les pins (noir) ; coupe à travers le bouton.*
+
+### À imprimer : [`hardware/boitier/a-imprimer/`](hardware/boitier/a-imprimer/)
+
+| Fichier | Pièce | Sur le plateau |
+|---|---|---|
+| `devant.stl` | Devant (cadre de l'écran) | La face de l'écran sur le plateau (tel quel) |
+| `arriere.stl` | Arrière, avec le support du bouton | Le fond sur le plateau (tel quel) |
+| `bouton-piston.stl` | Piston du bouton | La collerette (le grand disque) sur le plateau |
+| `bouton-porte-switch.stl` | Support du switch TL1105 | La barre sur le plateau (tel quel) |
+
+Aucun support nécessaire. Boîtier fermé : 110 × 75 × 40 mm. Imprime le **devant en couleur foncée** si possible : la face fait 1.2 mm, et une couleur pâle peut laisser passer un peu de lumière de l'écran.
+
+Les fichiers originaux de @NachiS (pour un 2.4") sont dans [`original-nachis/`](hardware/boitier/original-nachis/), mais ils ne servent pas pour ce projet.
+
+**Quincaillerie :** 4 vis M3 pour fermer le boîtier (par le devant, dans les coins) et 4 vis pour l'ESP32. Vérifie les longueurs sur la page Printables de @NachiS.
+
+### Écran (MSP2807)
+
+L'écran se pose face vers le bas dans le devant, les pins du côté droit (vu de face). Les 4 tiges du devant passent dans les trous du circuit. Mets une goutte de colle chaude sur chaque tige pour tenir l'écran. La fenêtre est décalée de 4.9 mm vers la gauche, parce que l'image du MSP2807 n'est pas centrée sur son circuit.
+
+Si l'image est à l'envers, change `SCREEN_ROTATION` de `1` à `3` dans `firmware/remotedisplay/display.cpp`.
 
 ### Bouton (TL1105)
 
-Le bouton est sur le dessus du boîtier, **26 mm à gauche du centre**, pour que les fils du switch restent loin de ceux de l'ESP32. Un piston imprimé traverse le mur de 6.8 mm et appuie sur un switch TL1105 (tige standard, 5 mm de haut), tenu par un porte-switch.
+Le bouton est sur le dessus du boîtier, à gauche, pour que les fils du switch restent loin de ceux de l'ESP32. Un piston imprimé traverse le mur de 6.8 mm et appuie sur un switch TL1105 (tige standard, 5 mm de haut), tenu par un porte-switch.
 
 ![Coupe du bouton](docs/bouton-coupe.png)
 
 *Coupes : boîtier en gris, piston en rouge, switch en noir, porte-switch en bleu. À gauche au centre du bouton, à droite à travers une patte du switch.*
-
-**Impression** (aucun support nécessaire) :
-- `display-back-bouton.stl` : comme l'original, le fond sur le plateau.
-- `bouton-piston.stl` : la collerette (le grand disque) à plat sur le plateau.
-- `bouton-porte-switch.stl` : à plat, la barre sur le plateau (tel quel dans le fichier).
 
 **Montage :**
 1. Par l'intérieur du boîtier, passe la tige du piston dans le trou du mur du haut. La collerette reste en dedans, contre le mur.
@@ -128,13 +136,17 @@ Le bouton est sur le dessus du boîtier, **26 mm à gauche du centre**, pour que
 
 Au repos, le piston dépasse de 1.5 mm et il y a 0.3 mm de jeu entre lui et la tige du switch. Le switch clique quand le piston est enfoncé d'environ 0.55 mm. Ça marche pour une tige de 4.1 à 5.3 mm de haut. Si le piston frotte dans le trou, passe une mèche de 6.5 mm ou un peu de papier sablé. Si le porte-switch est trop serré dans les rainures, sable un peu ses côtés.
 
-Pour changer une mesure (position, longueur du piston...), modifie les paramètres au début de [`bouton.py`](hardware/boitier/bouton.py) et relance-le (`pip install manifold3d numpy`).
+### Modifier le boîtier
+
+Toutes les mesures sont au début de [`generer.py`](hardware/boitier/generer.py). Change-les et relance le script pour regénérer les 4 fichiers (`pip install manifold3d numpy`, puis `python3 generer.py`).
 
 ## Structure du repo
 
 ```
 hardware/                 Projet KiCad (schéma, PCB)
-hardware/boitier/         Boîtier imprimé en 3D (design par @NachiS)
+hardware/boitier/         Boîtier imprimé en 3D (basé sur le design de @NachiS)
+  a-imprimer/             Les 4 pièces à imprimer
+  original-nachis/        Fichiers originaux (pour un écran 2.4")
 docs/                     Schéma en PDF
 firmware/remotedisplay/
   remotedisplay.ino       Programme principal (WiFi, gestion des messages, sauvegarde)
