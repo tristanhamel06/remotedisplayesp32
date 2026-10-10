@@ -116,6 +116,10 @@ Les fichiers originaux de @NachiS (pour un 2.4") sont dans [`original-nachis/`](
 
 ### Écran (MSP2807)
 
+![Écran dans le devant](docs/ecran-dans-le-devant.png)
+
+*À gauche, l'écran au-dessus du devant (vu de l'intérieur, la vitre vers le bas). Au milieu, l'écran en place. À droite, le résultat vu de face.*
+
 L'écran se pose face vers le bas dans le devant, les pins du côté droit (vu de face). Les 4 tiges du devant passent dans les trous du circuit. Mets une goutte de colle chaude sur chaque tige pour tenir l'écran. La fenêtre est décalée de 4.9 mm vers la gauche, parce que l'image du MSP2807 n'est pas centrée sur son circuit.
 
 Si l'image est à l'envers, change `SCREEN_ROTATION` de `1` à `3` dans `firmware/remotedisplay/display.cpp`.
