@@ -109,25 +109,24 @@ Les fichiers sont dans [`hardware/boitier/`](hardware/boitier/) :
 
 ### Bouton (TL1105)
 
-Le bouton est sur le dessus du boîtier. Un piston imprimé traverse le mur de 6.8 mm et appuie sur un switch TL1105 à tige courte, tenu par un porte-switch.
+Le bouton est sur le dessus du boîtier, **26 mm à gauche du centre**, pour que les fils du switch restent loin de ceux de l'ESP32. Un piston imprimé traverse le mur de 6.8 mm et appuie sur un switch TL1105 (tige standard, 5 mm de haut), tenu par un porte-switch.
 
 ![Coupe du bouton](docs/bouton-coupe.png)
 
-*Coupe : boîtier en gris, piston en rouge, switch en noir, porte-switch en bleu.*
+*Coupes : boîtier en gris, piston en rouge, switch en noir, porte-switch en bleu. À gauche au centre du bouton, à droite à travers une patte du switch.*
 
 **Impression** (aucun support nécessaire) :
 - `display-back-bouton.stl` : comme l'original, le fond sur le plateau.
 - `bouton-piston.stl` : la collerette (le grand disque) à plat sur le plateau.
-- `bouton-porte-switch.stl` : à plat.
+- `bouton-porte-switch.stl` : à plat, la barre sur le plateau (tel quel dans le fichier).
 
 **Montage :**
 1. Par l'intérieur du boîtier, passe la tige du piston dans le trou du mur du haut. La collerette reste en dedans, contre le mur.
-2. Glisse le porte-switch par le haut dans les deux rainures, derrière la collerette.
-3. Pousse le TL1105 dans le trou carré du porte-switch, la tige en premier, jusqu'à ce qu'elle **touche** la collerette, sans faire cliquer le switch.
-4. Mets de la colle chaude derrière le switch pour le fixer au porte-switch.
-5. Branche deux pattes **en diagonale** du switch (ex. 1 et 4) : une sur **GPIO 32**, l'autre sur **GND**. Les pattes 1-2 et 3-4 sont reliées entre elles dans le switch, alors deux pattes en diagonale passent toujours par le bouton.
+2. Mets le TL1105 dans la poche carrée du porte-switch, la tige vers l'avant. Ses pattes passent par les ouvertures au-dessus et en dessous de la barre du fond, et le switch s'appuie sur la barre.
+3. Glisse le porte-switch (avec le switch) par le haut dans les deux rainures, derrière la collerette. Le switch est maintenant bloqué : la barre en arrière, la collerette en avant. Pas besoin de colle.
+4. Branche deux pattes **en diagonale** du switch (ex. 1 et 4) : une sur **GPIO 32**, l'autre sur **GND**. Les pattes 1-2 et 3-4 sont reliées entre elles dans le switch, alors deux pattes en diagonale passent toujours par le bouton.
 
-Le piston dépasse de 1.5 mm et peut s'enfoncer de 0.8 mm. Le switch clique après 0.25 mm. Si le piston frotte dans le trou, passe une mèche de 6.5 mm ou un peu de papier sablé.
+Au repos, le piston dépasse de 1.5 mm et il y a 0.3 mm de jeu entre lui et la tige du switch. Le switch clique quand le piston est enfoncé d'environ 0.55 mm. Ça marche pour une tige de 4.1 à 5.3 mm de haut. Si le piston frotte dans le trou, passe une mèche de 6.5 mm ou un peu de papier sablé. Si le porte-switch est trop serré dans les rainures, sable un peu ses côtés.
 
 Pour changer une mesure (position, longueur du piston...), modifie les paramètres au début de [`bouton.py`](hardware/boitier/bouton.py) et relance-le (`pip install manifold3d numpy`).
 

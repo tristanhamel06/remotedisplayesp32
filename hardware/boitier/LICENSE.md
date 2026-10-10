@@ -17,7 +17,7 @@ Les fichiers `display-front.stl`, `display-back.stl`, `display-ili9341-pin-block
 
 Fichiers modifiés ou ajoutés dans ce repo (aussi sous CC BY-NC-SA 4.0) :
 
-- `display-back-bouton.stl` : version modifiée de `display-back.stl`. Ajout d'un trou de 6.4 mm dans le mur du haut et, derrière ce mur, d'un support pour un bouton poussoir TL1105 (canal en U avec deux rainures et un renfort à 45°).
+- `display-back-bouton.stl` : version modifiée de `display-back.stl`. Ajout d'un trou de 6.4 mm dans le mur du haut (26 mm à gauche du centre) et, derrière ce mur, d'un support pour un bouton poussoir TL1105 (canal en U avec deux rainures et un renfort à 45°).
 - `bouton-piston.stl` et `bouton-porte-switch.stl` : nouvelles pièces pour le bouton.
 - `bouton.py` : script qui génère ces trois fichiers à partir de `display-back.stl`.
 
