@@ -93,7 +93,7 @@ Si l'écran est déménagé ailleurs, il crée tout seul le réseau `Ecran-Confi
 
 Le boîtier imprimé en 3D est le modèle **[Display for ESP32 with ILI9341](https://www.printables.com/model/1205379-display-for-esp32-with-ili9341)**, conçu par **[@NachiS](https://www.printables.com/@NachiS)** sur Printables. Merci à lui! Tout le crédit pour le design lui revient.
 
-Les fichiers du boîtier sont sous licence [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (attribution, pas d'utilisation commerciale, partage dans les mêmes conditions). Ils sont inclus ici sans modification. Voir [`hardware/boitier/LICENSE.md`](hardware/boitier/LICENSE.md).
+Les fichiers du boîtier sont sous licence [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (attribution, pas d'utilisation commerciale, partage dans les mêmes conditions). Les fichiers originaux sont inclus sans modification. La version avec le bouton est une modification, partagée sous la même licence. Voir [`hardware/boitier/LICENSE.md`](hardware/boitier/LICENSE.md).
 
 Les fichiers sont dans [`hardware/boitier/`](hardware/boitier/) :
 
@@ -103,6 +103,33 @@ Les fichiers sont dans [`hardware/boitier/`](hardware/boitier/) :
 | `display-back.stl` | Arrière du boîtier |
 | `display-ili9341-pin-block.stl` | Bloc pour les pins de l'écran ILI9341 |
 | `display-light-bleed-blocker.stl` | Pièce qui bloque la lumière du rétroéclairage qui dépasse sur les bords |
+| `display-back-bouton.stl` | Arrière du boîtier **avec le bouton** (modifié). Imprime-le à la place de `display-back.stl` |
+| `bouton-piston.stl` | Piston du bouton |
+| `bouton-porte-switch.stl` | Support du switch TL1105 |
+
+### Bouton (TL1105)
+
+Le bouton est sur le dessus du boîtier. Un piston imprimé traverse le mur de 6.8 mm et appuie sur un switch TL1105 à tige courte, tenu par un porte-switch.
+
+![Coupe du bouton](docs/bouton-coupe.png)
+
+*Coupe : boîtier en gris, piston en rouge, switch en noir, porte-switch en bleu.*
+
+**Impression** (aucun support nécessaire) :
+- `display-back-bouton.stl` : comme l'original, le fond sur le plateau.
+- `bouton-piston.stl` : la collerette (le grand disque) à plat sur le plateau.
+- `bouton-porte-switch.stl` : à plat.
+
+**Montage :**
+1. Par l'intérieur du boîtier, passe la tige du piston dans le trou du mur du haut. La collerette reste en dedans, contre le mur.
+2. Glisse le porte-switch par le haut dans les deux rainures, derrière la collerette.
+3. Pousse le TL1105 dans le trou carré du porte-switch, la tige en premier, jusqu'à ce qu'elle **touche** la collerette, sans faire cliquer le switch.
+4. Mets de la colle chaude derrière le switch pour le fixer au porte-switch.
+5. Branche deux pattes **en diagonale** du switch (ex. 1 et 4) : une sur **GPIO 32**, l'autre sur **GND**. Les pattes 1-2 et 3-4 sont reliées entre elles dans le switch, alors deux pattes en diagonale passent toujours par le bouton.
+
+Le piston dépasse de 1.5 mm et peut s'enfoncer de 0.8 mm. Le switch clique après 0.25 mm. Si le piston frotte dans le trou, passe une mèche de 6.5 mm ou un peu de papier sablé.
+
+Pour changer une mesure (position, longueur du piston...), modifie les paramètres au début de [`bouton.py`](hardware/boitier/bouton.py) et relance-le (`pip install manifold3d numpy`).
 
 ## Structure du repo
 
