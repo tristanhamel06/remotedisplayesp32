@@ -9,7 +9,11 @@
 #define TFT_CS   5
 #define TFT_DC   16
 #define TFT_RST  17
+#define TFT_LED  22  // retroeclairage, controle en PWM
 // SCK = GPIO18, MOSI = GPIO23, MISO = GPIO19 (bus SPI par defaut de l'ESP32)
+
+#define BACKLIGHT_PWM_FREQ 5000
+#define BACKLIGHT_PWM_BITS 8
 
 // 1 = paysage (320x240). Mets 0 si ton cadre est en portrait (240x320).
 #define SCREEN_ROTATION 1
@@ -280,7 +284,28 @@ bool displayJpeg(const uint8_t* jpeg, size_t len, const String& caption) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// Retroeclairage
+// ---------------------------------------------------------------------------
+
+void displaySetBrightness(uint8_t percent) {
+  static int current = -1;
+  if (percent > 100) percent = 100;
+  if (percent == current) return;
+  current = percent;
+
+  // L'oeil percoit la lumiere de facon non lineaire : 50 % de PWM parait
+  // presque aussi clair que 100 %. On met le pourcentage au carre pour
+  // que les petites valeurs soient vraiment plus sombres.
+  uint32_t duty = (uint32_t)255 * percent * percent / 10000;
+  if (percent > 0 && duty == 0) duty = 1;
+  ledcWrite(TFT_LED, duty);
+}
+
 void displayBegin() {
+  ledcAttach(TFT_LED, BACKLIGHT_PWM_FREQ, BACKLIGHT_PWM_BITS);
+  displaySetBrightness(100);
+
   tft.begin();
   tft.setRotation(SCREEN_ROTATION);
   tft.cp437(true);

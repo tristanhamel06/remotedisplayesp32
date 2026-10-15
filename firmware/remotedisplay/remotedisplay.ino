@@ -14,6 +14,7 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <LittleFS.h>
+#include <Preferences.h>
 #include "secrets.h"
 #include "display.h"
 #include "telegram.h"
@@ -26,6 +27,80 @@
 
 #define LAST_IMAGE_FILE "/last.jpg"
 #define LAST_TEXT_FILE  "/last.txt"
+
+// ---------------------------------------------------------------------------
+// Bouton dodo : un clic eteint l'ecran pendant 5 heures, un autre clic le
+// rallume. Une petite tache FreeRTOS surveille le bouton en parallele, parce
+// que loop() peut rester bloquee jusqu'a 20 s a attendre Telegram.
+// ---------------------------------------------------------------------------
+
+#define BUTTON_PIN 32                              // bouton entre GPIO 32 et GND
+#define SLEEP_DURATION_MS (5UL * 60 * 60 * 1000)   // 5 heures
+#define DEBOUNCE_MS 50
+
+Preferences prefs;
+volatile uint8_t brightness = 100;  // luminosite normale, en %
+volatile bool sleeping = false;
+volatile unsigned long sleepStart = 0;
+
+void loadSettings() {
+  prefs.begin("ecran", false);
+  brightness = prefs.getUChar("brightness", 100);
+}
+
+void saveSettings() {
+  prefs.putUChar("brightness", brightness);
+}
+
+// Minutes avant que l'ecran se rallume (0 s'il est allume)
+unsigned long sleepMinutesLeft() {
+  if (!sleeping) return 0;
+  unsigned long elapsed = millis() - sleepStart;
+  if (elapsed >= SLEEP_DURATION_MS) return 0;
+  return (SLEEP_DURATION_MS - elapsed) / 60000;
+}
+
+String sleepStatus() {
+  if (!sleeping) return "L'écran est allumé.";
+  unsigned long m = sleepMinutesLeft();
+  return "L'écran est éteint (bouton dodo). Il se rallume dans " +
+         String(m / 60) + " h " + String(m % 60) + " min.";
+}
+
+void backlightTask(void*) {
+  bool lastReading = HIGH;
+  bool stableState = HIGH;
+  unsigned long lastChange = 0;
+
+  for (;;) {
+    // Anti-rebond : l'etat doit rester stable 50 ms avant de compter
+    bool reading = digitalRead(BUTTON_PIN);
+    if (reading != lastReading) {
+      lastChange = millis();
+      lastReading = reading;
+    }
+    if (millis() - lastChange > DEBOUNCE_MS && reading != stableState) {
+      stableState = reading;
+      if (stableState == LOW) {  // bouton appuye
+        sleeping = !sleeping;
+        sleepStart = millis();
+        Serial.println(sleeping ? "Bouton : écran éteint pour 5 h" : "Bouton : écran rallumé");
+      }
+    }
+
+    if (sleeping && millis() - sleepStart >= SLEEP_DURATION_MS) {
+      sleeping = false;
+    }
+
+    displaySetBrightness(sleeping ? 0 : brightness);
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+void startBacklightTask() {
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  xTaskCreatePinnedToCore(backlightTask, "backlight", 3072, nullptr, 1, nullptr, 0);
+}
 
 // ---------------------------------------------------------------------------
 // Sauvegarde du dernier message dans la flash (LittleFS)
@@ -100,7 +175,36 @@ const char* HELP_TEXT =
   "• Photo : envoie-la normalement (pas comme fichier). "
   "La légende s'affiche en bas de la photo.\n"
   "• Texte : la taille s'ajuste toute seule.\n"
-  "• /effacer : vide l'écran";
+  "• /effacer : vide l'écran\n"
+  "• /luminosite 50 : luminosité de 5 à 100 %\n"
+  "• /etat : savoir si l'écran est allumé\n\n"
+  "Le bouton sur l'écran l'éteint pour 5 h. Un autre clic le rallume.";
+
+// Reponse apres avoir affiche un message
+String shownReply() {
+  if (sleeping) return "✅ Affiché! " + sleepStatus();
+  return "✅ Affiché!";
+}
+
+void handleBrightnessCommand(const TelegramMessage& msg) {
+  int space = msg.text.indexOf(' ');
+  if (space == -1) {
+    telegramSendMessage(msg.chatId, "Luminosité : " + String(brightness) + " %\n\nPour changer : /luminosite 50");
+    return;
+  }
+
+  int value = msg.text.substring(space + 1).toInt();
+  if (value < 5 || value > 100) {
+    telegramSendMessage(msg.chatId, "Choisis une valeur entre 5 et 100.");
+    return;
+  }
+
+  brightness = value;
+  saveSettings();
+  String reply = "Luminosité réglée à " + String(value) + " %.";
+  if (sleeping) reply += " " + sleepStatus();
+  telegramSendMessage(msg.chatId, reply);
+}
 
 // Choisit la taille de photo qui va paraitre la plus grosse a l'ecran,
 // sans depasser la memoire disponible
@@ -135,7 +239,7 @@ void showPhoto(const TelegramMessage& msg) {
 
   if (displayJpeg(jpeg, len, msg.text)) {
     saveImage(jpeg, len, msg.text);
-    telegramSendMessage(msg.chatId, "✅ Affiché!");
+    telegramSendMessage(msg.chatId, shownReply());
   } else {
     telegramSendMessage(msg.chatId, "J'ai pas réussi à afficher cette image 😕");
     showSaved();  // on remet ce qu'il y avait avant
@@ -168,6 +272,10 @@ void handleMessage(const TelegramMessage& msg) {
     telegramSendMessage(msg.chatId, "Je peux juste afficher des photos et du texte 🙂");
   } else if (msg.text == "/start" || msg.text == "/aide") {
     telegramSendMessage(msg.chatId, HELP_TEXT);
+  } else if (msg.text.startsWith("/lumin")) {
+    handleBrightnessCommand(msg);
+  } else if (msg.text == "/etat") {
+    telegramSendMessage(msg.chatId, sleepStatus());
   } else if (msg.text == "/effacer") {
     clearSaved();
     displayWaiting();
@@ -175,7 +283,7 @@ void handleMessage(const TelegramMessage& msg) {
   } else {
     displayText(msg.text);
     saveText(msg.text);
-    telegramSendMessage(msg.chatId, "✅ Affiché!");
+    telegramSendMessage(msg.chatId, shownReply());
   }
 }
 
@@ -214,7 +322,9 @@ void syncClock() {
 
 void setup() {
   Serial.begin(115200);
+  loadSettings();
   displayBegin();
+  startBacklightTask();
 
   if (!LittleFS.begin(true)) {
     Serial.println("Erreur LittleFS");

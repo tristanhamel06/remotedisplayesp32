@@ -7,6 +7,7 @@ Un écran 2.8" connecté à internet. Tu envoies une **photo** ou un **texte** �
 - Le dernier message est sauvegardé dans la mémoire flash, donc il revient après une panne de courant.
 - Le WiFi se configure avec un téléphone, sans reprogrammer l'ESP32.
 - Seul le propriétaire du bot peut envoyer des messages. Les autres sont ignorés.
+- Bouton dodo : un clic éteint l'écran pendant 5 heures, un autre clic le rallume. La luminosité est réglable par Telegram.
 
 ## Comment ça marche
 
@@ -36,13 +37,15 @@ Le schéma complet est dans [`hardware/`](hardware/) (KiCad 10) ou en PDF dans [
 | 5 | DC | GPIO 16 |
 | 6 | SDI (MOSI) | GPIO 23 |
 | 7 | SCK | GPIO 18 |
-| 8 | LED (rétroéclairage) | 3V3 |
+| 8 | LED (rétroéclairage) | GPIO 22 (PWM, pour le bouton dodo et la luminosité) |
 | 9 | SDO (MISO) | GPIO 19 |
 | 10 | T_CLK | GPIO 18 (partagé avec SCK) |
 | 11 | T_CS | GPIO 21 |
 | 12 | T_DIN | GPIO 23 (partagé avec MOSI) |
 | 13 | T_DO | GPIO 19 (partagé avec MISO) |
 | 14 | T_IRQ | GPIO 34 |
+
+**Bouton dodo** (bouton poussoir normalement ouvert) : une patte sur **GPIO 32**, l'autre sur **GND**. Le code utilise la résistance de pull-up interne de l'ESP32.
 
 ## Installation
 
@@ -84,6 +87,10 @@ C'est prêt! Le WiFi est déjà sauvegardé, pas besoin de le reconfigurer.
 | Un texte | Affiché en gros, centré |
 | `/effacer` | L'écran revient à l'écran d'attente |
 | `/aide` | Le bot explique comment l'utiliser |
+| `/luminosite 50` | Luminosité, de 5 à 100 % (sauvegardée) |
+| `/etat` | Dit si l'écran est allumé ou éteint par le bouton |
+
+Si un message arrive pendant que l'écran est éteint, il est affiché, mais l'écran reste éteint. Il apparaît quand l'écran se rallume.
 
 Le bot répond « ✅ Affiché! » quand c'est fait.
 
